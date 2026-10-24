@@ -1,0 +1,683 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Armário dos Medicamentos</title>
+<meta name="theme-color" content="#0f6b57">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Medicamentos">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<style>
+/* Uma coluna estreita: o índice do armário, agrupado por letra como as gavetas de uma farmácia. */
+:root {
+  --bg: #f3f6f5;
+  --surface: #ffffff;
+  --ink: #15211e;
+  --muted: #5b6b67;
+  --line: #d6dfdc;
+  --accent: #0f6b57;
+  --accent-ink: #ffffff;
+  --accent-soft: #dcefe9;
+  --warn: #9a5b00;
+  --warn-soft: #fbecd2;
+  --bad: #b3261e;
+  --bad-soft: #f9dedc;
+  --font-display: -apple-system-headline, -apple-system, "SF Pro Display", system-ui, "Helvetica Neue", Arial, sans-serif;
+  --font-body: -apple-system, "SF Pro Text", system-ui, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f1614; --surface: #17211e; --ink: #e5eeeb; --muted: #95a6a1; --line: #2a3733;
+    --accent: #4cc3a5; --accent-ink: #062019; --accent-soft: #1b3a32;
+    --warn: #f0b45a; --warn-soft: #3a2c14; --bad: #ff8a80; --bad-soft: #3d1c1a;
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font-family: var(--font-body); font-size: 17px; line-height: 1.45;
+  padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+[hidden] { display: none !important; }
+img { max-width: 100%; }
+.wrap {
+  max-width: 760px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 64px;
+  display: flex; flex-direction: column; gap: 18px;
+}
+header { display: flex; flex-direction: column; gap: 4px; }
+h1 {
+  font-family: var(--font-display); font-weight: 800; font-size: 1.75rem;
+  letter-spacing: -0.01em; margin: 0; text-wrap: balance;
+  display: flex; align-items: center; gap: 10px;
+}
+h1 .cross {
+  width: 28px; height: 28px; flex: none; background: var(--accent);
+  clip-path: polygon(33% 0,67% 0,67% 33%,100% 33%,100% 67%,67% 67%,67% 100%,33% 100%,33% 67%,0 67%,0 33%,33% 33%);
+}
+.sub { color: var(--muted); margin: 0; }
+
+.summary { display: flex; flex-wrap: wrap; gap: 8px; }
+.pill {
+  font-family: var(--font-mono); font-size: 0.8rem; padding: 4px 10px; border-radius: 999px;
+  background: var(--surface); border: 1px solid var(--line); color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.pill.bad { background: var(--bad-soft); color: var(--bad); border-color: transparent; }
+.pill.warn { background: var(--warn-soft); color: var(--warn); border-color: transparent; }
+
+.add {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 14px;
+  padding: 16px; display: flex; flex-direction: column; gap: 14px;
+}
+h2 { font-family: var(--font-display); font-size: 1.1rem; margin: 0; }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; }
+button, .btn {
+  font: inherit; font-weight: 600; cursor: pointer; border-radius: 10px;
+  padding: 11px 16px; border: 1px solid var(--line); background: var(--surface); color: var(--ink);
+  display: inline-flex; align-items: center; gap: 8px; min-height: 44px;
+  -webkit-tap-highlight-color: transparent;
+}
+button.primary, .btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+button.danger { color: var(--bad); border-color: var(--bad); }
+button.ghost { border-color: transparent; background: transparent; padding: 8px 10px; min-height: 40px; color: var(--accent); }
+button:disabled { opacity: .5; }
+button:focus-visible, .btn:focus-within, input:focus-visible, textarea:focus-visible {
+  outline: 3px solid var(--accent); outline-offset: 2px;
+}
+.btn { position: relative; overflow: hidden; }
+.btn input { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; cursor: pointer; }
+.hint { color: var(--muted); font-size: 0.9rem; margin: 0; }
+.status { font-size: 0.95rem; color: var(--accent); margin: 0; }
+.status.err { color: var(--bad); }
+progress { width: 100%; height: 6px; accent-color: var(--accent); }
+
+.previews { display: flex; gap: 8px; flex-wrap: wrap; }
+.previews img { width: 64px; height: 64px; object-fit: cover; border-radius: 8px; border: 1px solid var(--line); }
+
+.review { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.review > h2, .review .full { grid-column: 1 / -1; }
+.field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+label.l { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 700; }
+input, textarea {
+  font: inherit; font-size: 16px; color: var(--ink); background: var(--bg); border: 1px solid var(--line);
+  border-radius: 8px; padding: 10px 12px; width: 100%; min-width: 0;
+}
+textarea { resize: vertical; min-height: 60px; }
+@media (max-width: 480px) { .review { grid-template-columns: 1fr; } }
+
+details.ocr { grid-column: 1 / -1; border-top: 1px solid var(--line); padding-top: 10px; }
+details.ocr summary { cursor: pointer; color: var(--accent); font-weight: 600; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.chips button {
+  min-height: 34px; padding: 4px 10px; font-weight: 400; font-size: 0.9rem;
+  background: var(--bg); max-width: 100%; text-align: left; overflow-wrap: anywhere;
+}
+
+.tools { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.tools input { flex: 1 1 220px; }
+
+.letter {
+  font-family: var(--font-display); font-weight: 800; font-size: 0.95rem; color: var(--accent);
+  border-bottom: 2px solid var(--accent); padding-bottom: 2px; margin: 8px 0 0; letter-spacing: 0.08em;
+}
+.list { display: flex; flex-direction: column; gap: 10px; }
+.med {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 12px;
+  padding: 12px; display: grid; grid-template-columns: 64px 1fr; gap: 12px; align-items: start;
+}
+.thumb { width: 64px; height: 64px; border-radius: 8px; object-fit: cover; background: var(--accent-soft); display: block; }
+.thumb.empty { display: grid; place-items: center; color: var(--accent); font-family: var(--font-display); font-weight: 800; font-size: 1.4rem; }
+.body { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.top { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.name { font-family: var(--font-display); font-weight: 700; font-size: 1.08rem; margin: 0; overflow-wrap: anywhere; }
+.comp { margin: 0; color: var(--muted); overflow-wrap: anywhere; font-size: 0.95rem; }
+.meta { display: flex; flex-wrap: wrap; gap: 6px 12px; font-size: 0.9rem; align-items: center; }
+.meta .k { color: var(--muted); }
+.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.chip { font-family: var(--font-mono); font-size: 0.76rem; padding: 3px 8px; border-radius: 6px; white-space: nowrap; }
+.chip.ok { background: var(--accent-soft); color: var(--accent); }
+.chip.warn { background: var(--warn-soft); color: var(--warn); }
+.chip.bad { background: var(--bad-soft); color: var(--bad); }
+.chip.none { background: var(--bg); color: var(--muted); }
+.stepper { display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: 8px; }
+.stepper button { min-height: 32px; padding: 2px 12px; border: 0; background: transparent; color: var(--ink); }
+.rowact { display: flex; gap: 2px; flex-wrap: wrap; margin-left: -10px; }
+.confirm { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 0.9rem; }
+
+.empty-state { border: 2px dashed var(--line); border-radius: 14px; padding: 28px 18px; text-align: center; color: var(--muted); }
+.empty-state strong { color: var(--ink); display: block; font-family: var(--font-display); font-size: 1.1rem; margin-bottom: 4px; }
+
+footer { border-top: 1px solid var(--line); padding-top: 14px; display: flex; flex-direction: column; gap: 10px; }
+footer .hint { font-size: 0.85rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1><span class="cross" aria-hidden="true"></span>Armário dos Medicamentos</h1>
+    <p class="sub">Todos os medicamentos lá de casa, por ordem alfabética.</p>
+  </header>
+
+  <div class="summary" id="summary"></div>
+
+  <section class="add" aria-labelledby="add-title">
+    <h2 id="add-title">Adicionar medicamento</h2>
+    <p class="hint">Fotografe a caixa de frente, com boa luz. Junte uma segunda fotografia da lateral onde está a validade. A leitura é feita no próprio iPhone. Só fica guardada uma miniatura muito pequena.</p>
+    <div class="actions">
+      <label class="btn primary">Tirar fotografia
+        <input id="photo-cam" type="file" accept="image/*" capture="environment">
+      </label>
+      <label class="btn">Escolher fotografias
+        <input id="photo-gal" type="file" accept="image/*" multiple>
+      </label>
+      <button id="manual" type="button">Escrever à mão</button>
+    </div>
+    <div class="previews" id="previews"></div>
+    <progress id="prog" max="1" value="0" hidden></progress>
+    <p class="status" id="status" role="status" aria-live="polite"></p>
+
+    <form class="review" id="review" hidden>
+      <h2 id="review-title">Confirme os dados</h2>
+      <div class="field full"><label class="l" for="f-nome">Nome</label><input id="f-nome" required autocomplete="off"></div>
+      <div class="field full"><label class="l" for="f-comp">Composição (substância ativa e dosagem)</label><textarea id="f-comp"></textarea></div>
+      <div class="field"><label class="l" for="f-forma">Forma</label><input id="f-forma" placeholder="comprimidos, xarope…" autocomplete="off"></div>
+      <div class="field"><label class="l" for="f-val">Validade (mês/ano)</label><input id="f-val" type="month"></div>
+      <div class="field"><label class="l" for="f-blist">Blisters</label><input id="f-blist" type="number" min="0" inputmode="numeric"></div>
+      <div class="field"><label class="l" for="f-upb">Unidades por blister</label><input id="f-upb" type="number" min="0" inputmode="numeric"></div>
+      <div class="field full"><label class="l" for="f-notas">Notas</label><input id="f-notas" placeholder="lote, para quem, quando tomar…" autocomplete="off"></div>
+      <details class="ocr" id="ocr" hidden>
+        <summary>Texto lido na caixa</summary>
+        <p class="hint">Toque num campo acima e depois numa linha para a copiar para lá.</p>
+        <div class="chips" id="chips"></div>
+      </details>
+      <div class="actions full">
+        <button class="primary" type="submit" id="save">Guardar</button>
+        <button type="button" id="add-photo">Juntar outra fotografia</button>
+        <button type="button" id="cancel">Cancelar</button>
+      </div>
+    </form>
+  </section>
+
+  <div class="tools">
+    <input id="search" type="search" placeholder="Procurar por nome ou substância" aria-label="Procurar">
+  </div>
+
+  <div id="list" class="list">
+    <div class="empty-state"><strong>A abrir o armário…</strong>Os medicamentos guardados aparecem aqui por ordem alfabética.</div>
+  </div>
+
+  <footer>
+    <h2>Cópia de segurança</h2>
+    <p class="hint">Os dados ficam só neste iPhone. Faça de vez em quando uma cópia de segurança e guarde-a no iCloud Drive (app Ficheiros).</p>
+    <div class="actions">
+      <button id="export" type="button">Exportar cópia</button>
+      <label class="btn">Importar cópia
+        <input id="import" type="file" accept="application/json,.json">
+      </label>
+    </div>
+    <p class="status" id="backup-status" role="status" aria-live="polite"></p>
+  </footer>
+</div>
+
+<input id="photo-repl" type="file" accept="image/*" hidden>
+<input id="photo-more" type="file" accept="image/*" hidden>
+
+<script src="tesseract.min.js"></script>
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+
+  // ---------- armazenamento no iPhone (IndexedDB) ----------
+  const DB_NAME = "armario", STORE = "meds";
+  const dbp = new Promise((res, rej) => {
+    const r = indexedDB.open(DB_NAME, 1);
+    r.onupgradeneeded = () => r.result.createObjectStore(STORE, { keyPath: "id" });
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error);
+  });
+  async function tx(mode, fn) {
+    const db = await dbp;
+    return new Promise((res, rej) => {
+      const t = db.transaction(STORE, mode);
+      const out = fn(t.objectStore(STORE));
+      t.oncomplete = () => res(out && "result" in out ? out.result : undefined);
+      t.onerror = () => rej(t.error);
+    });
+  }
+  const getAll = () => tx("readonly", (s) => s.getAll());
+  const put = (rec) => tx("readwrite", (s) => s.put(rec));
+  const del = (id) => tx("readwrite", (s) => s.delete(id));
+  try { navigator.storage?.persist?.(); } catch {}
+
+  let meds = [];
+  async function reload() { meds = await getAll(); render(); }
+
+  // ---------- imagens ----------
+  function loadImage(file) {
+    return new Promise((res, rej) => {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => { URL.revokeObjectURL(url); res(img); };
+      img.onerror = () => { URL.revokeObjectURL(url); rej(new Error("Imagem ilegível")); };
+      img.src = url;
+    });
+  }
+  function draw(img, maxSide) {
+    const s = Math.min(1, maxSide / Math.max(img.naturalWidth, img.naturalHeight));
+    const c = document.createElement("canvas");
+    c.width = Math.max(1, Math.round(img.naturalWidth * s));
+    c.height = Math.max(1, Math.round(img.naturalHeight * s));
+    c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+    return c;
+  }
+  // Miniatura mínima: 96 px no lado maior, JPEG de baixa qualidade (~3 KB)
+  const tinyThumb = (img) => draw(img, 96).toDataURL("image/jpeg", 0.45);
+  // Cópia para leitura: tons de cinzento com contraste esticado (não é guardada)
+  function forOcr(img) {
+    const c = draw(img, 2000), ctx = c.getContext("2d");
+    const d = ctx.getImageData(0, 0, c.width, c.height), p = d.data;
+    let lo = 255, hi = 0;
+    for (let i = 0; i < p.length; i += 4) {
+      const g = 0.299 * p[i] + 0.587 * p[i + 1] + 0.114 * p[i + 2];
+      p[i] = g; if (g < lo) lo = g; if (g > hi) hi = g;
+    }
+    const k = hi > lo ? 255 / (hi - lo) : 1;
+    for (let i = 0; i < p.length; i += 4) { const v = (p[i] - lo) * k; p[i] = p[i + 1] = p[i + 2] = v; }
+    ctx.putImageData(d, 0, 0);
+    return c;
+  }
+
+  // ---------- leitura (Tesseract, no aparelho) ----------
+  let workerP = null, progBase = 0, progSpan = 1;
+  function getWorker() {
+    if (!workerP) {
+      const base = new URL("./", location.href).href.replace(/\/$/, "");
+      workerP = Tesseract.createWorker("por", 1, {
+        workerPath: base + "/worker.min.js",
+        corePath: base,
+        langPath: base,
+        logger: (m) => {
+          if (m.status === "recognizing text") $("prog").value = progBase + m.progress * progSpan;
+        },
+      }).catch((e) => { workerP = null; throw e; });
+    }
+    return workerP;
+  }
+
+  async function readImages(imgs) {
+    const worker = await getWorker();
+    const lines = [];
+    for (let i = 0; i < imgs.length; i++) {
+      progBase = i / imgs.length; progSpan = 1 / imgs.length;
+      const { data } = await worker.recognize(forOcr(imgs[i]));
+      for (const l of data.lines || []) {
+        const text = l.text.replace(/\s+/g, " ").trim();
+        if (text.replace(/[^\p{L}\p{N}]/gu, "").length < 2) continue;
+        lines.push({ text, h: l.bbox.y1 - l.bbox.y0, conf: l.confidence });
+      }
+    }
+    return lines;
+  }
+
+  // ---------- interpretar o texto da caixa ----------
+  const FORMAS = [
+    "comprimidos revestidos por película", "comprimidos revestidos", "comprimidos efervescentes",
+    "comprimidos orodispersíveis", "comprimidos de libertação prolongada", "comprimidos para chupar",
+    "comprimidos", "cápsulas moles", "cápsulas duras", "cápsulas", "xarope", "suspensão oral",
+    "solução oral", "gotas orais", "gotas", "pó para suspensão oral", "granulado", "saquetas",
+    "pomada", "creme", "gel", "supositórios", "spray nasal", "solução para pulverização nasal",
+    "colírio", "ampolas", "pastilhas", "emulsão", "loção", "adesivos",
+  ];
+  const STOP = /\b(comprimid|c[áa]psul|via oral|uso oral|medicamento|sujeito|receita|lote|lot\b|exp\b|val\b|validade|ler o folheto|folheto|manter fora|crian[çc]as|conservar|temperatura|titular|aim\b|n\.?º|registo|cada|cont[ée]m|excipiente|www\.|\.pt\b|\.com\b)/i;
+  const strip = (s) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+
+  function fixDigits(s) {
+    // Corrige confusões comuns do OCR junto a algarismos (O→0, l/I→1)
+    return s.replace(/(?<=\d)[Oo]|[Oo](?=\d)/g, "0").replace(/(?<=\d)[lI|]|[lI|](?=\d)/g, "1");
+  }
+
+  function parseExpiry(text) {
+    const t = fixDigits(text);
+    const yr = (y) => { y = +y; if (y < 100) y += 2000; return y >= 2015 && y <= 2050 ? y : null; };
+    const ok = (y, m) => { y = yr(y); m = +m; return y && m >= 1 && m <= 12 ? `${y}-${String(m).padStart(2, "0")}` : null; };
+    const KEY = "(?:EXP|VAL|VALID|VALIDADE|V\\.|CAD|USE BY|EXPIRY)";
+    const SEP = "\\s*[\\/.\\-\\s]\\s*";
+    const tries = [
+      new RegExp(KEY + "[^0-9]{0,8}(\\d{1,2})" + SEP + "(\\d{1,2})" + SEP + "(\\d{2,4})", "i"),   // dd/mm/aaaa
+      new RegExp(KEY + "[^0-9]{0,8}(\\d{4})" + SEP + "(\\d{1,2})", "i"),                       // aaaa-mm
+      new RegExp(KEY + "[^0-9]{0,8}(\\d{1,2})" + SEP + "(\\d{2,4})", "i"),                     // mm/aaaa
+    ];
+    let m;
+    if ((m = t.match(tries[0])) && ok(m[3], m[2])) return ok(m[3], m[2]);
+    if ((m = t.match(tries[1])) && ok(m[1], m[2])) return ok(m[1], m[2]);
+    if ((m = t.match(tries[2])) && ok(m[2], m[1])) return ok(m[2], m[1]);
+    // Sem palavra-chave: a data mm/aaaa mais tardia que aparecer (a fabricação é anterior)
+    let best = null;
+    for (const x of t.matchAll(/(?<!\d)(\d{1,2})\s*[\/.\-]\s*(20\d{2})(?!\d)/g)) {
+      const v = ok(x[2], x[1]); if (v && (!best || v > best)) best = v;
+    }
+    for (const x of t.matchAll(/(?<!\d)(20\d{2})\s*[\/.\-]\s*(\d{1,2})(?!\d)/g)) {
+      const v = ok(x[1], x[2]); if (v && (!best || v > best)) best = v;
+    }
+    return best;
+  }
+
+  function parse(lines) {
+    const all = lines.map((l) => l.text).join("\n");
+    const allFixed = fixDigits(all);
+    const out = { nome: "", composicao: "", forma: "", validade: null, blisters: null, unidadesPorBlister: null, notas: "" };
+
+    // Forma: a expressão mais longa encontrada
+    const lowAll = strip(all);
+    for (const f of FORMAS) if (lowAll.includes(strip(f))) { out.forma = f; break; }
+
+    // Composição: "Substância 500 mg"
+    const comp = [];
+    const reDose = /([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ\- ]{2,40}?)\s*(\d+(?:[.,]\d+)?)\s*(mg|mcg|µg|ug|g|ml|mL|UI|%)(?:\s*\/\s*(\d*\s*(?:ml|mL|g|dose)))?(?![A-Za-z])/g;
+    for (const m of allFixed.matchAll(reDose)) {
+      let sub = m[1].trim().replace(/\s+/g, " ");
+      sub = sub.split(" ").filter((w) => !/^(de|com|e|por|cada|cont[ée]m|comprimido|c[áa]psula)$/i.test(w)).slice(-3).join(" ");
+      if (sub.length < 3 || STOP.test(sub) && !/[a-z]{4,}/i.test(sub.replace(STOP, ""))) continue;
+      const dose = `${m[2]} ${m[3].replace(/^ug$/, "µg")}${m[4] ? "/" + m[4].trim() : ""}`;
+      const s = `${sub[0].toUpperCase()}${sub.slice(1)} ${dose}`;
+      if (!comp.some((c) => strip(c) === strip(s))) comp.push(s);
+      if (comp.length >= 3) break;
+    }
+    out.composicao = comp.join("; ");
+
+    // Nome: a linha com letras maiores que não seja texto legal nem a forma
+    const cands = lines
+      .filter((l) => /[A-Za-zÀ-ÿ]{3,}/.test(l.text) && !STOP.test(l.text) && l.conf > 40)
+      .sort((a, b) => b.h - a.h);
+    if (cands[0]) {
+      let n = cands[0].text.replace(/\s*\d+(?:[.,]\d+)?\s*(mg|mcg|µg|g|ml|UI|%)\b.*$/i, "").replace(/[®™©]/g, "").trim();
+      n = n.replace(/^[^A-Za-zÀ-ÿ0-9]+|[^A-Za-zÀ-ÿ0-9)]+$/g, "");
+      out.nome = n.length > 1 ? n : cands[0].text;
+      if (out.nome === out.nome.toUpperCase() && out.nome.length > 3) {
+        out.nome = out.nome.toLowerCase().replace(/(^|[\s\-])(\p{L})/gu, (a, p, c) => p + c.toUpperCase());
+      }
+    }
+
+    // Blisters e unidades
+    let m;
+    if ((m = allFixed.match(/(?<!\d)(\d{1,2})\s*[x×]\s*(\d{1,3})(?!\d)/))) {
+      out.blisters = +m[1]; out.unidadesPorBlister = +m[2];
+    }
+    if (out.blisters == null && (m = allFixed.match(/(\d{1,2})\s*(blisters?|bl[íi]steres|carteiras|tiras)/i))) out.blisters = +m[1];
+    const tot = allFixed.match(/(?<![\d.,])(\d{1,3})\s*(comprimidos|comp\.|c[áa]psulas|c[áa]ps\.|drageias|saquetas|pastilhas|supositórios|ampolas|unidades)/i);
+    if (tot) {
+      const total = +tot[1];
+      if (out.blisters && !out.unidadesPorBlister && total % out.blisters === 0) out.unidadesPorBlister = total / out.blisters;
+      if (!out.blisters) out.notas = `${total} ${tot[2].toLowerCase()} na embalagem`;
+    }
+
+    out.validade = parseExpiry(all);
+    const lote = allFixed.match(/\b(?:LOTE|LOT|L\.)\s*[:.]?\s*([A-Z0-9][A-Z0-9\-]{2,})/i);
+    if (lote) out.notas = [out.notas, `Lote ${lote[1]}`].filter(Boolean).join(" · ");
+    return out;
+  }
+
+  // ---------- fluxo de adicionar ----------
+  let pendingThumb = null, pendingImgs = [], editingId = null, confirmId = null, lastField = "f-nome";
+
+  function setStatus(t, err) { $("status").textContent = t; $("status").classList.toggle("err", !!err); }
+
+  async function handleFiles(files, append) {
+    files = [...files].filter((f) => f.type.startsWith("image/") || /\.(heic|jpe?g|png)$/i.test(f.name)).slice(0, 4);
+    if (!files.length) return;
+    setStatus("A preparar as fotografias…");
+    let imgs;
+    try { imgs = await Promise.all(files.map(loadImage)); }
+    catch { return setStatus("Não foi possível abrir a fotografia. Experimente outra.", true); }
+
+    if (!append) { pendingImgs = []; $("previews").innerHTML = ""; pendingThumb = tinyThumb(imgs[0]); }
+    else if (!pendingThumb) pendingThumb = tinyThumb(imgs[0]);
+    pendingImgs.push(...imgs);
+    imgs.forEach((im) => { const t = new Image(); t.src = draw(im, 128).toDataURL("image/jpeg", 0.6); t.alt = ""; $("previews").append(t); });
+
+    const keep = append ? readForm() : null;
+    $("prog").hidden = false; $("prog").value = 0;
+    setStatus(workerP ? "A ler a embalagem…" : "A ler a embalagem… (a primeira leitura demora um pouco mais)");
+    try {
+      const lines = await readImages(pendingImgs);
+      const d = parse(lines);
+      if (keep) for (const k of Object.keys(keep)) if (keep[k] !== "" && keep[k] != null) d[k] = keep[k];
+      openReview(d, lines);
+      const missing = [!d.nome && "nome", !d.composicao && "composição", !d.validade && "validade", d.blisters == null && "blisters"].filter(Boolean);
+      setStatus(missing.length
+        ? `Leitura concluída. Falta confirmar: ${missing.join(", ")}. Pode copiar do texto lido em baixo.`
+        : "Leitura concluída. Confirme os dados e guarde.");
+    } catch (e) {
+      console.error(e);
+      openReview(keep || {}, []);
+      setStatus("Não consegui ler a fotografia. Preencha à mão ou tire outra fotografia com mais luz.", true);
+    } finally { $("prog").hidden = true; }
+  }
+
+  function readForm() {
+    const num = (v) => (v === "" ? null : Math.max(0, Math.round(+v)));
+    return {
+      nome: $("f-nome").value.trim(),
+      composicao: $("f-comp").value.trim(),
+      forma: $("f-forma").value.trim(),
+      validade: $("f-val").value || null,
+      blisters: num($("f-blist").value),
+      unidadesPorBlister: num($("f-upb").value),
+      notas: $("f-notas").value.trim(),
+    };
+  }
+
+  function openReview(d, lines) {
+    $("f-nome").value = d.nome || "";
+    $("f-comp").value = d.composicao || "";
+    $("f-forma").value = d.forma || "";
+    $("f-val").value = /^\d{4}-\d{2}/.test(d.validade || "") ? d.validade.slice(0, 7) : "";
+    $("f-blist").value = d.blisters ?? "";
+    $("f-upb").value = d.unidadesPorBlister ?? "";
+    $("f-notas").value = d.notas || "";
+    $("review-title").textContent = editingId ? "Editar medicamento" : "Confirme os dados";
+    const chips = $("chips"); chips.innerHTML = "";
+    (lines || []).forEach((l) => {
+      const b = document.createElement("button"); b.type = "button"; b.textContent = l.text; chips.append(b);
+    });
+    $("ocr").hidden = !(lines && lines.length);
+    $("review").hidden = false;
+  }
+  function closeReview() {
+    $("review").hidden = true; $("previews").innerHTML = ""; $("ocr").open = false;
+    pendingThumb = null; pendingImgs = []; editingId = null;
+    ["photo-cam", "photo-gal", "photo-more"].forEach((id) => { $(id).value = ""; });
+  }
+
+  // Toque numa linha lida → copia para o último campo usado
+  ["f-nome", "f-comp", "f-forma", "f-blist", "f-upb", "f-notas"].forEach((id) =>
+    $(id).addEventListener("focus", () => { lastField = id; }));
+  $("chips").addEventListener("click", (e) => {
+    const b = e.target.closest("button"); if (!b) return;
+    const f = $(lastField), t = b.textContent;
+    if (f.type === "number") { const n = t.match(/\d+/); if (n) f.value = n[0]; }
+    else if (lastField === "f-nome" || !f.value) f.value = t;
+    else f.value = `${f.value}; ${t}`;
+    const v = parseExpiry(t); if (v && !$("f-val").value) $("f-val").value = v;
+    f.focus();
+  });
+
+  $("review").addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    const rec = readForm();
+    if (!rec.nome) return $("f-nome").focus();
+    const now = new Date().toISOString();
+    try {
+      if (editingId) {
+        const old = meds.find((m) => m.id === editingId) || {};
+        await put({ ...old, ...rec, foto: pendingThumb || old.foto || null, atualizado: now });
+        setStatus(`${rec.nome} atualizado.`);
+      } else {
+        await put({ id: (crypto.randomUUID?.() || String(Date.now()) + Math.random().toString(16).slice(2)), ...rec, foto: pendingThumb, criado: now, atualizado: now });
+        setStatus(`${rec.nome} guardado.`);
+      }
+      closeReview(); await reload();
+    } catch { setStatus("Não foi possível guardar. Verifique se há espaço livre no iPhone.", true); }
+  });
+  $("cancel").addEventListener("click", () => { closeReview(); setStatus(""); });
+  $("manual").addEventListener("click", () => { closeReview(); setStatus(""); openReview({}, []); $("f-nome").focus(); });
+  $("photo-cam").addEventListener("change", (e) => handleFiles(e.target.files, false));
+  $("photo-gal").addEventListener("change", (e) => handleFiles(e.target.files, false));
+  $("add-photo").addEventListener("click", () => $("photo-more").click());
+  $("photo-more").addEventListener("change", (e) => handleFiles(e.target.files, true));
+
+  // ---------- lista ----------
+  const coll = new Intl.Collator("pt", { sensitivity: "base", numeric: true });
+  function expiry(v) {
+    if (!v) return { cls: "none", label: "sem validade" };
+    const [y, m] = v.split("-").map(Number);
+    const now = new Date();
+    const months = (y - now.getFullYear()) * 12 + (m - (now.getMonth() + 1));
+    const label = `${String(m).padStart(2, "0")}/${y}`;
+    if (months < 0) return { cls: "bad", label: `expirado ${label}` };
+    if (months <= 2) return { cls: "warn", label: `expira ${label}` };
+    return { cls: "ok", label: `val. ${label}` };
+  }
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const firstLetter = (s) => strip(s || "#").charAt(0).toUpperCase().replace(/[^A-Z]/, "#");
+
+  function renderSummary() {
+    const exp = meds.filter((m) => expiry(m.validade).cls === "bad").length;
+    const soon = meds.filter((m) => expiry(m.validade).cls === "warn").length;
+    $("summary").innerHTML = meds.length
+      ? `<span class="pill">${meds.length} medicamento${meds.length === 1 ? "" : "s"}</span>` +
+        (exp ? `<span class="pill bad">${exp} expirado${exp === 1 ? "" : "s"}</span>` : "") +
+        (soon ? `<span class="pill warn">${soon} a expirar em breve</span>` : "")
+      : "";
+  }
+
+  function render() {
+    renderSummary();
+    const q = strip($("search").value.trim());
+    const list = meds
+      .filter((m) => !q || strip(`${m.nome} ${m.composicao}`).includes(q))
+      .sort((a, b) => coll.compare(a.nome || "", b.nome || ""));
+    const el = $("list");
+    if (!meds.length) {
+      el.innerHTML = `<div class="empty-state"><strong>O armário está vazio</strong>Tire uma fotografia à primeira caixa de medicamentos para começar.</div>`;
+      return;
+    }
+    if (!list.length) {
+      el.innerHTML = `<div class="empty-state"><strong>Nada encontrado</strong>Nenhum medicamento corresponde a “${esc($("search").value)}”.</div>`;
+      return;
+    }
+    let html = "", cur = null;
+    for (const m of list) {
+      const L = firstLetter(m.nome);
+      if (L !== cur) { cur = L; html += `<h3 class="letter">${L}</h3>`; }
+      const e = expiry(m.validade);
+      const total = m.blisters != null && m.unidadesPorBlister ? ` · ${m.blisters * m.unidadesPorBlister} un.` : "";
+      html += `<article class="med" data-id="${esc(m.id)}">
+        ${m.foto ? `<img class="thumb" src="${esc(m.foto)}" alt="Fotografia de ${esc(m.nome)}">` : `<div class="thumb empty" aria-hidden="true">${esc(L)}</div>`}
+        <div class="body">
+          <div class="top"><p class="name">${esc(m.nome)}</p><span class="chip ${e.cls}">${esc(e.label)}</span></div>
+          ${m.composicao ? `<p class="comp">${esc(m.composicao)}</p>` : ""}
+          <div class="meta">
+            ${m.forma ? `<span>${esc(m.forma)}</span>` : ""}
+            <span class="k">Blisters</span>
+            <span class="stepper">
+              <button data-act="dec" aria-label="Menos um blister">−</button>
+              <span class="mono">${m.blisters ?? "?"}</span>
+              <button data-act="inc" aria-label="Mais um blister">+</button>
+            </span>
+            ${m.unidadesPorBlister ? `<span class="mono k">${m.unidadesPorBlister}/blister${total}</span>` : ""}
+          </div>
+          ${m.notas ? `<p class="comp">${esc(m.notas)}</p>` : ""}
+          ${confirmId === m.id
+            ? `<div class="confirm">Apagar ${esc(m.nome)}? <button class="danger" data-act="del-yes">Apagar</button><button data-act="del-no">Manter</button></div>`
+            : `<div class="rowact"><button class="ghost" data-act="edit">Editar</button><button class="ghost" data-act="photo">Nova foto</button><button class="ghost" data-act="del">Apagar</button></div>`}
+        </div>
+      </article>`;
+    }
+    el.innerHTML = html;
+  }
+  $("search").addEventListener("input", render);
+
+  let replId = null;
+  $("photo-repl").addEventListener("change", async () => {
+    const f = $("photo-repl").files[0]; $("photo-repl").value = "";
+    const m = meds.find((x) => x.id === replId);
+    if (!f || !m) return;
+    try { const img = await loadImage(f); await put({ ...m, foto: tinyThumb(img) }); await reload(); }
+    catch { setStatus("Não foi possível trocar a fotografia.", true); }
+  });
+
+  $("list").addEventListener("click", async (ev) => {
+    const b = ev.target.closest("button[data-act]"); if (!b) return;
+    const id = b.closest(".med").dataset.id;
+    const m = meds.find((x) => x.id === id); if (!m) return;
+    const act = b.dataset.act;
+    try {
+      if (act === "inc" || act === "dec") {
+        await put({ ...m, blisters: Math.max(0, (m.blisters ?? 0) + (act === "inc" ? 1 : -1)) }); await reload();
+      } else if (act === "edit") {
+        closeReview(); editingId = id; openReview(m, []);
+        $("add-title").scrollIntoView({ behavior: "smooth", block: "start" });
+      } else if (act === "photo") { replId = id; $("photo-repl").click(); }
+      else if (act === "del") { confirmId = id; render(); }
+      else if (act === "del-no") { confirmId = null; render(); }
+      else if (act === "del-yes") { confirmId = null; await del(id); setStatus(`${m.nome} apagado.`); await reload(); }
+    } catch { setStatus("Não foi possível alterar. Tente outra vez.", true); }
+  });
+
+  // ---------- cópia de segurança ----------
+  const bstat = (t, err) => { $("backup-status").textContent = t; $("backup-status").classList.toggle("err", !!err); };
+  $("export").addEventListener("click", async () => {
+    const name = `medicamentos-${new Date().toISOString().slice(0, 10)}.json`;
+    const blob = new Blob([JSON.stringify({ app: "armario-medicamentos", versao: 1, medicamentos: meds }, null, 1)], { type: "application/json" });
+    const file = new File([blob], name, { type: "application/json" });
+    try {
+      if (navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ files: [file], title: name });
+        return bstat("Cópia criada. Escolha “Guardar em Ficheiros” para a guardar no iCloud Drive.");
+      }
+    } catch (e) { if (e?.name === "AbortError") return; }
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob); a.download = name; document.body.append(a); a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
+    bstat(`Cópia ${name} descarregada.`);
+  });
+  $("import").addEventListener("change", async (e) => {
+    const f = e.target.files[0]; e.target.value = "";
+    if (!f) return;
+    try {
+      const data = JSON.parse(await f.text());
+      const list = Array.isArray(data) ? data : data.medicamentos;
+      if (!Array.isArray(list)) throw new Error();
+      let n = 0;
+      for (const m of list) if (m && m.id && m.nome) { await put(m); n++; }
+      await reload();
+      bstat(`${n} medicamento${n === 1 ? "" : "s"} importado${n === 1 ? "" : "s"}.`);
+    } catch { bstat("Este ficheiro não é uma cópia válida do Armário dos Medicamentos.", true); }
+  });
+
+  // ---------- arranque ----------
+  reload().catch(() => {
+    $("list").innerHTML = `<div class="empty-state"><strong>Não foi possível abrir o armário</strong>No Safari, desative a Navegação privada e volte a abrir.</div>`;
+  });
+  if ("serviceWorker" in navigator && location.protocol !== "file:") {
+    navigator.serviceWorker.register("sw.js").catch(() => {});
+  }
+  // Prepara o motor de leitura em segundo plano para a primeira fotografia ser mais rápida
+  setTimeout(() => { getWorker().catch(() => {}); }, 1500);
+  window.__parse = parse;
+})();
+</script>
+</body>
+</html>
